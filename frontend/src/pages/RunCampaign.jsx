@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { getCampaigns, getContactLists, getContacts, startCampaign, stopCampaign, getCampaignResults, getCampaignDtmfSummary } from '../api';
+import { getCampaigns, getContactLists, getContacts, getSipAccounts, startCampaign, stopCampaign, getCampaignResults, getCampaignDtmfSummary } from '../api';
 import StatusBadge from '../components/StatusBadge';
 import socket from '../socket';
 
@@ -52,10 +52,12 @@ function LogLine({ level, ts, msg }) {
 export default function RunCampaign() {
   const [campaigns,        setCampaigns]        = useState([]);
   const [contactLists,     setContactLists]     = useState([]);
+  const [sipAccounts,      setSipAccounts]      = useState([]);
   const [contacts,         setContacts]         = useState([]);
   const [activeCampaign,   setActiveCampaign]   = useState(null);
   const [selectedCampId,   setSelectedCampId]   = useState('');
   const [selectedListId,   setSelectedListId]   = useState('');
+  const [selectedSipId,    setSelectedSipId]    = useState('');
   const [results,          setResults]          = useState([]);
   const [dtmfSummary,      setDtmfSummary]      = useState([]);
   const [liveCalls,        setLiveCalls]        = useState([]);
@@ -73,12 +75,15 @@ export default function RunCampaign() {
   const loadBase = useCallback(async () => {
     setLoading(true);
     try {
-      const [camps, lists] = await Promise.all([getCampaigns(), getContactLists("default")]);
+      const [camps, lists, sips] = await Promise.all([getCampaigns(), getContactLists("default"), getSipAccounts()]);
       setCampaigns(camps || []);
       const listArr = Array.isArray(lists) ? lists : [];
       setContactLists(listArr);
+      const sipArr = Array.isArray(sips) ? sips : [];
+      setSipAccounts(sipArr);
       if (camps?.length) setSelectedCampId(prev => prev || String(camps[0].id));
       if (listArr.length) setSelectedListId(prev => prev || String(listArr[0].id));
+      if (sipArr.length) setSelectedSipId(prev => prev || String((sipArr.find(s => s.is_active) || sipArr[0]).id));
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -175,7 +180,7 @@ export default function RunCampaign() {
     if (!selectedCampId) return setError('Please select a campaign.');
     setLaunching(true); setError(''); setSuccess('');
     try {
-      await startCampaign(selectedCampId, selectedListId || null);
+      await startCampaign(selectedCampId, selectedListId || null, selectedSipId || null);
       const updated = campaigns.find(c => String(c.id) === selectedCampId);
       if (updated) setActiveCampaign({ ...updated, status: 'running' });
       liveRef.current = [];
@@ -249,7 +254,20 @@ export default function RunCampaign() {
                 onChange={e => setSelectedCampId(e.target.value)} disabled={loading || isRun}>
                 <option value="">-- Select campaign --</option>
                 {campaigns.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">SIP Account (Caller)</label>
+              <select className="input" value={selectedSipId}
+                onChange={e => setSelectedSipId(e.target.value)} disabled={loading || isRun}>
+                <option value="">-- Select SIP account --</option>
+                {sipAccounts.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.caller_id ? `${s.caller_id} (${s.username})` : s.username} — {s.domain}
+                  </option>
                 ))}
               </select>
             </div>
@@ -257,12 +275,8 @@ export default function RunCampaign() {
             {selectedCampaign && (
               <div className="bg-gray-50 border border-black/[0.06] rounded-lg px-3.5 py-3 space-y-2">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <div><span className="text-[#64748B]">SIP: </span><span className="font-medium text-[#1A1B2E]">{selectedCampaign.sip_username}</span></div>
-                  <div><span className="text-[#64748B]">Domain: </span><span className="font-medium text-[#1A1B2E]">{selectedCampaign.sip_domain}</span></div>
-                  <div><span className="text-[#64748B]">Numbers: </span><span className="font-medium text-[#1A1B2E]">{selectedCampaign.total_numbers}</span></div>
                   <div><span className="text-[#64748B]">Concurrent: </span><span className="font-medium text-[#1A1B2E]">{selectedCampaign.concurrent_calls}</span></div>
                   <div><span className="text-[#64748B]">DTMF: </span><span className="font-medium text-[#1A1B2E]">{selectedCampaign.dtmf_digits} key(s)</span></div>
-                  <div><span className="text-[#64748B]">Status: </span><StatusBadge status={selectedCampaign.status} /></div>
                 </div>
                 {selectedCampaign.tts_text && (
                   <div className="border-t border-black/[0.06] pt-2">
@@ -301,7 +315,7 @@ export default function RunCampaign() {
                 onChange={e => setSelectedListId(e.target.value)} disabled={loading}>
                 <option value="">-- Select contact list --</option>
                 {contactLists.map(l => (
-                  <option key={l.id} value={l.id}>{l.list_name} ({l.total || l.contactsCount || 0})</option>
+                  <option key={l.id} value={l.id}>{l.list_name} ({l.contact_count || 0})</option>
                 ))}
               </select>
               {selectedList && (

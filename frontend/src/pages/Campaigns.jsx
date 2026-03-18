@@ -6,7 +6,6 @@ import {
   generateTTS,
   getAudioFiles,
   getCampaigns,
-  getSipAccounts,
   uploadAudio,
 } from '../api';
 import StatusBadge from '../components/StatusBadge';
@@ -49,7 +48,6 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
 
   const blank = {
     name: '',
-    sip_account_id: '',
     tts_text: '',
     tts_lang: 'en',
     dtmf_digits: 1,
@@ -65,7 +63,6 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
   const [audioFile,    setAudioFile]    = useState(null);
   const [selectedAudio,setSelectedAudio]= useState(null);    // { fileId, asteriskPath }
   const [ttsPreviewUrl,setTtsPreviewUrl]= useState('');
-  const [sipAccounts,  setSipAccounts]  = useState([]);
   const [loading,      setLoading]      = useState(false);
   const [ttsLoading,   setTtsLoading]   = useState(false);
   const [uploadLoading,setUploadLoading]= useState(false);
@@ -74,13 +71,11 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
   /* seed form when editing */
   useEffect(() => {
     if (!open) return;
-    getSipAccounts().then(setSipAccounts).catch(() => {});
     getAudioFiles().catch(() => {});
 
     if (isEdit && editData) {
       setForm({
         name:            editData.name            || '',
-        sip_account_id:  editData.sip_account_id  || '',
         tts_text:        editData.tts_text         || '',
         tts_lang:        editData.tts_lang         || 'en',
         dtmf_digits:     editData.dtmf_digits      ?? 1,
@@ -91,9 +86,8 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
         retry_delay:     editData.retry_delay      ?? 300,
       });
       setVoiceSource(editData.audio_type === 'upload' ? 'upload' : 'tts');
-      if (editData.audio_file) {
-        setSelectedAudio({ fileId: editData.audio_file, asteriskPath: editData.audio_file });
-      }
+      const af = editData.audio_asset_id || editData.audio_file;
+      if (af) setSelectedAudio({ fileId: af, asteriskPath: af });
     } else {
       setForm(blank);
       setVoiceSource('tts');
@@ -143,7 +137,6 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
     e.preventDefault();
     setError('');
 
-    if (!form.sip_account_id) return setError('Select a Caller ID / SIP account');
     if (voiceSource === 'tts' && !form.tts_text.trim()) return setError('Enter a TTS message');
     if (voiceSource === 'upload' && !selectedAudio) return setError('Upload an audio file first');
 
@@ -210,24 +203,6 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
               value={form.name}
               onChange={e => set('name', e.target.value)}
             />
-          </div>
-
-          {/* Caller ID */}
-          <div>
-            <label className="label">Caller ID</label>
-            <select
-              className="input"
-              required
-              value={form.sip_account_id}
-              onChange={e => set('sip_account_id', e.target.value)}
-            >
-              <option value="">-- Select Caller ID --</option>
-              {sipAccounts.map(a => (
-                <option key={a.id} value={a.id}>
-                  {a.caller_id || a.username} ({a.username})
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Voice Source tabs */}
@@ -387,7 +362,7 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
             <button
               type="submit"
               disabled={
-                loading || !form.sip_account_id ||
+                loading || !form.name.trim() ||
                 (voiceSource === 'tts' && !form.tts_text.trim()) ||
                 (voiceSource === 'upload' && !selectedAudio)
               }
@@ -476,7 +451,7 @@ export default function Campaigns() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          + Create Campaign
+          Create Campaign
         </button>
       </div>
 
@@ -558,7 +533,8 @@ export default function Campaigns() {
                 </tr>
               ) : (
                 campaigns.map(campaign => {
-                  const previewUrl = campaign.audio_file ? `/api/audio/${campaign.audio_file}/play` : '';
+                  const audioId = campaign.audio_file || campaign.audio_asset_id || '';
+                  const previewUrl = audioId ? `/api/audio/${audioId}/play` : '';
                   const audioLabel = campaign.audio_type === 'tts'
                     ? (campaign.tts_text ? campaign.tts_text.slice(0, 40) + (campaign.tts_text.length > 40 ? '…' : '') : 'Generated TTS')
                     : (campaign.audio_filename || 'Uploaded audio');

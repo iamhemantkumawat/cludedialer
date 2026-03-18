@@ -15,8 +15,12 @@ export const getCampaignHistory     = ()    => api.get('/campaigns/history').the
 export const getCampaign            = (id)  => api.get(`/campaigns/${id}`).then(r => r.data);
 export const createCampaign         = (d)   => api.post('/campaigns', d).then(r => r.data);
 export const deleteCampaign         = (id)  => api.delete(`/campaigns/${id}`).then(r => r.data);
-export const startCampaign          = (id, contactListId = null) =>
-  api.post(`/campaigns/${id}/start`, contactListId ? { contact_list_id: contactListId } : {}).then(r => r.data);
+export const startCampaign          = (id, contactListId = null, sipAccountId = null) => {
+  const body = {};
+  if (contactListId) body.contact_list_id = contactListId;
+  if (sipAccountId)  body.sip_account_id  = sipAccountId;
+  return api.post(`/campaigns/${id}/start`, body).then(r => r.data);
+};
 export const pauseCampaign          = (id)  => api.post(`/campaigns/${id}/pause`).then(r => r.data);
 export const stopCampaign           = (id)  => api.post(`/campaigns/${id}/stop`).then(r => r.data);
 export const getCampaignResults     = (id)  => api.get(`/campaigns/${id}/results`).then(r => r.data);

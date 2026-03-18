@@ -189,8 +189,8 @@ export class CampaignsService {
   }
 
   async createCampaign(payload: any) {
-    if (!payload.name || !payload.sip_account_id) {
-      throw new Error('name and sip_account_id required');
+    if (!payload.name) {
+      throw new Error('name is required');
     }
 
     const numbers = Array.isArray(payload.numbers) ? payload.numbers : [];
@@ -221,7 +221,7 @@ export class CampaignsService {
           campaignId,
           organizationId,
           payload.name,
-          payload.sip_account_id,
+          payload.sip_account_id || null,
           payload.audio_file || null,
           Number(payload.concurrent_calls || 1),
           JSON.stringify({
@@ -280,8 +280,17 @@ export class CampaignsService {
     return { id: campaignId, message: 'Campaign created' };
   }
 
-  async startCampaign(id: string) {
+  async startCampaign(id: string, sipAccountId: string | null = null, contactListId: string | null = null) {
     await this.getCampaign(id);
+    // If a SIP account is selected at run time, set it on the campaign before starting
+    if (sipAccountId) {
+      await this.databaseService.tx(async (client) => {
+        await client.query(
+          `UPDATE campaigns SET sip_trunk_id = $1, updated_at = now() WHERE id = $2`,
+          [sipAccountId, id],
+        );
+      });
+    }
     return this.campaignRuntimeService.startCampaign(id);
   }
 

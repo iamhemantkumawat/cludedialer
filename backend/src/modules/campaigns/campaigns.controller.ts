@@ -26,8 +26,8 @@ export class CampaignsController {
   }
 
   @Post(':id/start')
-  startCampaign(@Param('id') id: string) {
-    return this.campaignsService.startCampaign(id);
+  startCampaign(@Param('id') id: string, @Body() body: any) {
+    return this.campaignsService.startCampaign(id, body?.sip_account_id || null, body?.contact_list_id || null);
   }
 
   @Post(':id/pause')
