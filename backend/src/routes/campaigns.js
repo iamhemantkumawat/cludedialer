@@ -53,28 +53,28 @@ router.post('/', (req, res) => {
   if (!name || !sip_account_id) {
     return res.status(400).json({ error: 'name and sip_account_id required' });
   }
-  if (!numbers || !Array.isArray(numbers) || numbers.length === 0) {
-    return res.status(400).json({ error: 'numbers array required' });
-  }
 
+  const numList = Array.isArray(numbers) ? numbers : [];
   const id = uuidv4();
   db.prepare(`
     INSERT INTO campaigns (id, name, sip_account_id, audio_file, audio_type, tts_text, dtmf_digits, concurrent_calls, total_numbers)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, name, sip_account_id, audio_file || '', audio_type || 'upload',
-    tts_text || '', dtmf_digits || 1, concurrent_calls || 2, numbers.length);
+    tts_text || '', dtmf_digits || 1, concurrent_calls || 2, numList.length);
 
-  // Bulk insert contacts
-  const insertContact = db.prepare(
-    `INSERT INTO contacts (id, campaign_id, phone_number) VALUES (?, ?, ?)`
-  );
-  const insertMany = db.transaction((nums) => {
-    for (const num of nums) {
-      const clean = String(num).replace(/\s+/g, '').trim();
-      if (clean) insertContact.run(uuidv4(), id, clean);
-    }
-  });
-  insertMany(numbers);
+  // Bulk insert contacts if provided (legacy path)
+  if (numList.length > 0) {
+    const insertContact = db.prepare(
+      `INSERT INTO contacts (id, campaign_id, phone_number) VALUES (?, ?, ?)`
+    );
+    const insertMany = db.transaction((nums) => {
+      for (const num of nums) {
+        const clean = String(num).replace(/\s+/g, '').trim();
+        if (clean) insertContact.run(uuidv4(), id, clean);
+      }
+    });
+    insertMany(numList);
+  }
 
   res.json({ id, message: 'Campaign created' });
 });
