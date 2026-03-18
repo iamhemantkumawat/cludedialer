@@ -144,13 +144,14 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
     setError('');
 
     if (!form.sip_account_id) return setError('Select a Caller ID / SIP account');
-    if (!selectedAudio)        return setError('Generate TTS preview or upload audio first');
+    if (voiceSource === 'tts' && !form.tts_text.trim()) return setError('Enter a TTS message');
+    if (voiceSource === 'upload' && !selectedAudio) return setError('Upload an audio file first');
 
     setLoading(true);
     try {
       const payload = {
         ...form,
-        audio_file:  selectedAudio.fileId,
+        audio_file:  selectedAudio?.fileId || '',
         audio_type:  voiceSource,
         numbers:     [],   // contacts come from Contact Lists at run time
       };
@@ -385,7 +386,11 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
           <div className="flex gap-3 pt-1">
             <button
               type="submit"
-              disabled={loading || !form.sip_account_id || !selectedAudio}
+              disabled={
+                loading || !form.sip_account_id ||
+                (voiceSource === 'tts' && !form.tts_text.trim()) ||
+                (voiceSource === 'upload' && !selectedAudio)
+              }
               className="btn-primary flex-1"
             >
               {loading ? (

@@ -194,9 +194,6 @@ export class CampaignsService {
     }
 
     const numbers = Array.isArray(payload.numbers) ? payload.numbers : [];
-    if (numbers.length === 0) {
-      throw new Error('numbers array required');
-    }
 
     const organizationId = this.appContextService.getOrganizationId();
     const campaignId = randomUUID();
