@@ -43,7 +43,7 @@ function Toggle({ checked, onChange }) {
 }
 
 /* ── Create / Edit Campaign Modal ───────────────────────────────────────── */
-function CampaignModal({ open, onClose, onSaved, editData = null }) {
+function CampaignModal({ open, onClose, onSaved, editData = null, existingCampaigns = [] }) {
   const isEdit = !!editData;
 
   const blank = {
@@ -139,6 +139,14 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
 
     if (voiceSource === 'tts' && !form.tts_text.trim()) return setError('Enter a TTS message');
     if (voiceSource === 'upload' && !selectedAudio) return setError('Upload an audio file first');
+
+    // Warn on duplicate name (only on create, not edit of the same record)
+    if (!isEdit) {
+      const duplicate = existingCampaigns.find(
+        c => c.name.trim().toLowerCase() === form.name.trim().toLowerCase()
+      );
+      if (duplicate) return setError(`A campaign named "${duplicate.name}" already exists. Delete it first or choose a different name.`);
+    }
 
     setLoading(true);
 
@@ -458,6 +466,7 @@ export default function Campaigns() {
         onClose={() => { setModalOpen(false); setEditTarget(null); }}
         onSaved={handleSaved}
         editData={editTarget}
+        existingCampaigns={campaigns}
       />
 
       {/* page header */}
