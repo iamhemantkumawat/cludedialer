@@ -27,6 +27,7 @@ export class CampaignsService {
           st.domain AS sip_domain,
           c.max_concurrent_calls AS concurrent_calls,
           aa.id AS audio_asset_id,
+          COALESCE(NULLIF(c.metadata->>'legacy_audio_file', ''), aa.id::text) AS audio_file,
           aa.original_filename AS audio_filename,
           COALESCE(NULLIF(c.metadata->>'legacy_audio_type', ''), aa.kind, 'upload') AS audio_type,
           COALESCE((c.metadata->>'legacy_dtmf_digits')::int, 1) AS dtmf_digits,
@@ -228,6 +229,7 @@ export class CampaignsService {
             legacy_audio_type: payload.audio_type || 'upload',
             legacy_tts_text: payload.tts_text || '',
             legacy_dtmf_digits: Number(payload.dtmf_digits || 1),
+            legacy_audio_file: payload.audio_file || '',
           }),
         ],
       );

@@ -280,8 +280,19 @@ export default function RunCampaign() {
                 </div>
                 {selectedCampaign.tts_text && (
                   <div className="border-t border-black/[0.06] pt-2">
-                    <p className="text-[10px] uppercase tracking-wider text-[#64748B] mb-1">TTS Preview</p>
+                    <p className="text-[10px] uppercase tracking-wider text-[#64748B] mb-1">TTS Message</p>
                     <p className="text-xs text-[#1A1B2E] leading-relaxed line-clamp-2">{selectedCampaign.tts_text}</p>
+                  </div>
+                )}
+                {(selectedCampaign.audio_file || selectedCampaign.audio_asset_id) && (
+                  <div className="border-t border-black/[0.06] pt-2">
+                    <p className="text-[10px] uppercase tracking-wider text-[#64748B] mb-1">Audio Preview</p>
+                    <audio
+                      controls
+                      preload="none"
+                      className="w-full h-8"
+                      src={`/api/audio/${selectedCampaign.audio_file || selectedCampaign.audio_asset_id}/play`}
+                    />
                   </div>
                 )}
               </div>

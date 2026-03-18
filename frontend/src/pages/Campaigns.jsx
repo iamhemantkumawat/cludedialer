@@ -141,10 +141,29 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
     if (voiceSource === 'upload' && !selectedAudio) return setError('Upload an audio file first');
 
     setLoading(true);
+
+    // Auto-generate TTS if user didn't press "Generate Preview"
+    let audio = selectedAudio;
+    if (voiceSource === 'tts' && !audio) {
+      try {
+        setTtsLoading(true);
+        const result = await generateTTS({ text: form.tts_text, lang: form.tts_lang });
+        audio = { fileId: result.fileId, asteriskPath: result.asteriskPath };
+        setSelectedAudio(audio);
+        setTtsPreviewUrl(`/api/audio/${result.fileId}/play`);
+      } catch (e) {
+        setLoading(false);
+        setTtsLoading(false);
+        return setError(`TTS generation failed: ${e.response?.data?.error || e.message}`);
+      } finally {
+        setTtsLoading(false);
+      }
+    }
+
     try {
       const payload = {
         ...form,
-        audio_file:  selectedAudio?.fileId || '',
+        audio_file:  audio?.fileId || '',
         audio_type:  voiceSource,
         numbers:     [],   // contacts come from Contact Lists at run time
       };
@@ -373,7 +392,7 @@ function CampaignModal({ open, onClose, onSaved, editData = null }) {
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   {isEdit ? 'Saving…' : 'Creating…'}
                 </span>
-              ) : isEdit ? 'Save Changes' : 'Create Campaign'}
+              ) : ttsLoading ? 'Generating TTS…' : isEdit ? 'Save Changes' : 'Create Campaign'}
             </button>
             <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
           </div>
