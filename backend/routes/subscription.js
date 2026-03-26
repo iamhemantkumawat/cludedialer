@@ -59,20 +59,42 @@ router.post('/activate', async (req, res) => {
   }
 
   try {
-    // Deduct balance: read-modify-write via user/save (same approach as reference updateCredit())
     const newCredit = (currentCredit - price_inr).toFixed(4);
+    let deductMethod = 'user/save';
 
-    const saveResult = await magnusRequest('user', 'save', {
-      id: session.magnusId,
-      credit: newCredit,
-    });
-
-    if (saveResult.success === false) {
-      return res.status(402).json({ error: saveResult.error || 'Magnus balance update failed' });
+    // ── Attempt 1: refill/save with negative credit ───────────────────────────
+    // This is the correct Magnus way — creates an audit trail in refill history.
+    // Requires the API key to have 'refill' module permission in Magnus admin.
+    try {
+      const refillResult = await magnusRequest('refill', 'save', {
+        id_user: session.magnusId,
+        id: '0',
+        payment: '1',
+        credit: (-price_inr).toFixed(4),
+        description: `CyberX Dialer: ${plan.name} (€${plan.price_eur})`,
+      });
+      if (refillResult.success !== false) {
+        deductMethod = 'refill/save';
+        session.credit = newCredit;
+        console.log(`[Subscription] Deducted via refill/save for ${req.accountId}`);
+      } else {
+        throw new Error(refillResult.error || 'refill/save returned failure');
+      }
+    } catch (refillErr) {
+      // ── Fallback: user/save (direct credit overwrite) ─────────────────────
+      // Works when API key lacks refill permission, but does NOT create a
+      // Magnus refill history entry. To fix: enable 'refill' permission for
+      // your API key in Magnus Admin → API → API Keys.
+      console.warn(`[Subscription] refill/save failed (${refillErr.message}), falling back to user/save`);
+      const saveResult = await magnusRequest('user', 'save', {
+        id: session.magnusId,
+        credit: newCredit,
+      });
+      if (saveResult.success === false) {
+        return res.status(402).json({ error: saveResult.error || 'Magnus balance update failed' });
+      }
+      session.credit = newCredit;
     }
-
-    // Update session cache
-    session.credit = newCredit;
 
     // Expire any existing active subscription
     await db.run(
@@ -93,7 +115,7 @@ router.post('/activate', async (req, res) => {
     );
 
     const sub = await db.get('SELECT * FROM subscriptions WHERE id = ?', [id]);
-    res.json({ success: true, subscription: sub, new_credit: newCredit });
+    res.json({ success: true, subscription: sub, new_credit: newCredit, deduct_method: deductMethod });
   } catch (err) {
     console.error('[Subscription] Activation error:', err.message);
     res.status(500).json({ error: err.message });
