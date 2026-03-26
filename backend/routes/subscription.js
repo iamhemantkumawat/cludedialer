@@ -62,18 +62,19 @@ router.post('/activate', async (req, res) => {
     const newCredit = (currentCredit - price_inr).toFixed(4);
     let deductMethod = 'user/save';
 
-    // ── Attempt 1: refill/save with negative credit ───────────────────────────
-    // This is the correct Magnus way — creates an audit trail in refill history.
-    // Requires the API key to have 'refill' module permission in Magnus admin.
+    // ── refill/save with negative credit (matches Python recharge script) ────
+    // Field order and credit format must match the Python script exactly.
+    // description must be ASCII-only — non-ASCII chars (like EUR sign) can
+    // corrupt the HMAC signature encoding.
     try {
       const refillResult = await magnusRequest('refill', 'save', {
+        id: '0',                          // new record (matches Python id=0)
         id_user: session.magnusId,
-        id: '0',
         payment: '1',
-        credit: (-price_inr).toFixed(4),
-        description: `CyberX Dialer: ${plan.name} (€${plan.price_eur})`,
+        credit: String(-price_inr),       // e.g. "-1239" not "-1239.0000"
+        description: `CyberX Dialer - ${plan.name} EUR${plan.price_eur}`,
       });
-      if (refillResult.success !== false) {
+      if (refillResult.success !== false && !refillResult.error) {
         deductMethod = 'refill/save';
         session.credit = newCredit;
         console.log(`[Subscription] Deducted via refill/save for ${req.accountId}`);
@@ -82,9 +83,6 @@ router.post('/activate', async (req, res) => {
       }
     } catch (refillErr) {
       // ── Fallback: user/save (direct credit overwrite) ─────────────────────
-      // Works when API key lacks refill permission, but does NOT create a
-      // Magnus refill history entry. To fix: enable 'refill' permission for
-      // your API key in Magnus Admin → API → API Keys.
       console.warn(`[Subscription] refill/save failed (${refillErr.message}), falling back to user/save`);
       const saveResult = await magnusRequest('user', 'save', {
         id: session.magnusId,

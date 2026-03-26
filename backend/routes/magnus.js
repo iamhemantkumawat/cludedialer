@@ -20,10 +20,15 @@ async function magnusRequest(module, action, data = {}) {
     throw new Error('Magnus API not configured. Set MAGNUS_API_KEY, MAGNUS_API_SECRET, MAGNUS_PUBLIC_URL in .env');
   }
 
+  // Nonce format matches Python script: seconds + first 6 fractional digits
+  // Python: str(int(mt)) + str(mt).split('.')[1][:6]
   const mt    = Date.now();
-  const nonce = `${Math.floor(mt / 1000)}${String(mt % 1000).padStart(3, '0')}${String(Math.floor(Math.random() * 999)).padStart(3, '0')}`;
+  const secs  = Math.floor(mt / 1000);
+  const frac  = String(mt % 1000).padStart(3, '0') + '000'; // ms padded to 6 digits
+  const nonce = `${secs}${frac}`;
 
-  const payload = { module, action, nonce, ...data };
+  // Put nonce at end of payload to match Python script field order
+  const payload = { module, action, ...data, nonce };
   const encoded = qs.stringify(payload);
   const sign    = crypto.createHmac('sha512', API_SECRET).update(encoded).digest('hex');
 
