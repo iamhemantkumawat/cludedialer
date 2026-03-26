@@ -301,4 +301,4 @@ async function syncSipAccountsToLocal(magnusId, username) {
   return added;
 }
 
-module.exports = { router, requireSession, sessions };
+module.exports = { router, requireSession, sessions, magnusRequest };
