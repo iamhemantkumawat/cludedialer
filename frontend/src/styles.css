@@ -263,6 +263,9 @@ a {
 
 .account-panel__row--bottom {
   margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .account-panel__eyebrow {
@@ -341,7 +344,45 @@ a {
 
 .ami-badge__title {
   font-weight: 600;
+  font-size: 0.82rem;
 }
+
+.ami-badge__sub--active {
+  color: var(--green) !important;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.ami-badge__sub--inactive {
+  color: var(--red) !important;
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+/* Currency selector */
+.balance-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.currency-select {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fg);
+  padding: 2px 4px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 44px;
+  text-align: center;
+}
+.currency-select:hover { border-color: var(--primary); }
+.currency-select:focus { border-color: var(--primary); }
 
 .ami-badge__sub,
 .c-dim,

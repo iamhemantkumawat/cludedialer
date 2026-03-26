@@ -1,8 +1,41 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState, type PropsWithChildren } from "react";
-import { formatMoney } from "../app/utils";
 import type { MagnusUser } from "../app/types";
 import { BrandLogo } from "./BrandLogo";
+
+// ─── Currency conversion ──────────────────────────────────────────────────────
+// Rates: how many INR = 1 unit of this currency
+// (Magnus balance is always stored in INR)
+const CURRENCY_RATES: Record<string, number> = {
+  INR:  1,
+  USD:  83.50,
+  EUR:  88.50,
+  GBP: 105.70,
+  RUB:   0.902,
+};
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: "₹",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  RUB: "₽",
+};
+
+const CURRENCY_STORAGE_KEY = "balance_currency";
+
+function convertFromInr(inr: number, toCurrency: string): number {
+  const rate = CURRENCY_RATES[toCurrency] ?? 1;
+  return inr / rate;
+}
+
+function formatBalance(inr: number, currency: string): string {
+  const amount = convertFromInr(Number(inr) || 0, currency);
+  const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
+  // RUB shows 2 decimals, others show 4
+  const decimals = currency === "RUB" ? 2 : 4;
+  return `${symbol}${amount.toFixed(decimals)}`;
+}
 
 interface AppShellProps extends PropsWithChildren {
   amiConnected: boolean;
@@ -20,10 +53,18 @@ export function AppShell({
 }: AppShellProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currency, setCurrency] = useState<string>(
+    () => window.localStorage.getItem(CURRENCY_STORAGE_KEY) ?? "EUR"
+  );
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname, location.search]);
+
+  function handleCurrencyChange(c: string) {
+    setCurrency(c);
+    window.localStorage.setItem(CURRENCY_STORAGE_KEY, c);
+  }
 
   return (
     <div className="app-frame">
@@ -66,18 +107,34 @@ export function AppShell({
               {user.firstname ? ` (${user.firstname})` : ""}
             </div>
             <div className="account-panel__row account-panel__row--bottom">
-              <span className="account-panel__balance">{formatMoney(user.credit)}</span>
-              <button className="link-button" type="button" onClick={onRefreshBalance} title="Refresh balance">
-                ↻
-              </button>
+              <span className="account-panel__balance">
+                {formatBalance(Number(user.credit), currency)}
+              </span>
+              <div className="balance-controls">
+                <select
+                  className="currency-select"
+                  value={currency}
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
+                  title="Select display currency"
+                >
+                  {Object.keys(CURRENCY_RATES).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <button className="link-button" type="button" onClick={onRefreshBalance} title="Refresh balance">
+                  ↻
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="ami-badge">
             <div className={`ami-dot${amiConnected ? " on" : ""}`} />
             <div>
-              <div className="ami-badge__title">{amiConnected ? "AMI Online" : "AMI Offline"}</div>
-              <div className="ami-badge__sub">Asterisk AMI</div>
+              <div className="ami-badge__title">Server Status</div>
+              <div className={`ami-badge__sub${amiConnected ? " ami-badge__sub--active" : " ami-badge__sub--inactive"}`}>
+                {amiConnected ? "Active" : "Inactive"}
+              </div>
             </div>
           </div>
 
