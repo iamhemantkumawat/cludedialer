@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+frontend/.vite/
+
+# Environment variables (NEVER commit secrets)
+.env
+backend/.env
+*.env.local
+
+# Python TTS virtualenv
+backend/.venv_gtts/
+
+# Uploaded audio / data files
+data/audio/
+data/*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+
+# Temp TTS files
+/tmp/tts_*
