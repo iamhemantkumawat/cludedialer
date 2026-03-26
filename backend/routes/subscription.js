@@ -94,22 +94,35 @@ router.post('/activate', async (req, res) => {
       session.credit = newCredit;
     }
 
-    // Expire any existing active subscription
+    // Stack days on top of existing active subscription expiry (if any),
+    // otherwise start from now.
+    // Example: 1 day active (8h left) + 7 days = expires 7d 8h from now.
+    const existing = await db.get(
+      `SELECT expires_at FROM subscriptions
+       WHERE account_id = ? AND status = 'active' AND expires_at > NOW()
+       ORDER BY expires_at DESC LIMIT 1`,
+      [req.accountId]
+    );
+
+    // Mark old subscription as extended (keeps history)
     await db.run(
-      `UPDATE subscriptions SET status = 'replaced'
+      `UPDATE subscriptions SET status = 'extended'
        WHERE account_id = ? AND status = 'active'`,
       [req.accountId]
     );
 
-    // Calculate expiry
-    const expiresAt = new Date();
+    // New expiry = current expiry (if active) OR now, + new plan days
+    const baseDate = existing ? new Date(existing.expires_at) : new Date();
+    const expiresAt = new Date(baseDate);
     expiresAt.setDate(expiresAt.getDate() + plan.days);
 
     const id = uuidv4();
+    // plan_days stored is the TOTAL days from now to expiry (accumulated)
+    const totalDays = Math.ceil((expiresAt - new Date()) / (1000 * 60 * 60 * 24));
     await db.run(
       `INSERT INTO subscriptions (id, account_id, plan_name, plan_days, price_eur, price_inr, status, activated_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, 'active', NOW(), ?)`,
-      [id, req.accountId, plan.name, plan.days, plan.price_eur, price_inr, expiresAt.toISOString()]
+      [id, req.accountId, plan.name, totalDays, plan.price_eur, price_inr, expiresAt.toISOString()]
     );
 
     const sub = await db.get('SELECT * FROM subscriptions WHERE id = ?', [id]);

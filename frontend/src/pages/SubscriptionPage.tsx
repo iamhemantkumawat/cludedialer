@@ -60,7 +60,8 @@ export function SubscriptionPage() {
       return;
     }
 
-    if (!confirm(`Activate ${plan.name} for €${plan.price_eur} (≈ ₹${priceInr.toFixed(0)})?`)) return;
+    const stackMsg = sub ? ` Your current plan will be extended by ${plan.days} day${plan.days > 1 ? "s" : ""}.` : "";
+    if (!confirm(`Activate ${plan.name} for €${plan.price_eur} (≈ ₹${priceInr.toFixed(0)})?${stackMsg}`)) return;
 
     setActivating(plan.id);
     try {
