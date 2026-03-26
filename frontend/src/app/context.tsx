@@ -54,6 +54,8 @@ interface DialerContextValue {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshBalance: () => Promise<void>;
+  subscription: { active: boolean; expires_at: string | null } | null;
+  refreshSubscription: () => Promise<void>;
   syncMagnusSipAccounts: () => Promise<void>;
   refreshCampaigns: () => Promise<void>;
   refreshIvrs: () => Promise<void>;
@@ -101,6 +103,7 @@ export function DialerProvider({ children }: PropsWithChildren) {
   const [eventFeed, setEventFeed] = useState<EventFeedEntry[]>([]);
   const [dtmfFeed, setDtmfFeed] = useState<DtmfFeedEntry[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [subscription, setSubscription] = useState<{ active: boolean; expires_at: string | null } | null>(null);
 
   const sessionRef = useRef(session);
   const userRef = useRef(user);
@@ -176,6 +179,7 @@ export function DialerProvider({ children }: PropsWithChildren) {
     setEventFeed([]);
     setDtmfFeed([]);
     setAmiConnected(false);
+    setSubscription(null);
   }
 
   async function refreshCampaigns() {
@@ -241,6 +245,16 @@ export function DialerProvider({ children }: PropsWithChildren) {
     });
   }
 
+  async function refreshSubscription() {
+    try {
+      const data = await requestJson<{ subscription: { expires_at: string; status: string } | null }>("/api/subscription");
+      const sub = data.subscription;
+      setSubscription(sub ? { active: true, expires_at: sub.expires_at } : { active: false, expires_at: null });
+    } catch {
+      setSubscription({ active: false, expires_at: null });
+    }
+  }
+
   // Silently syncs Magnus SIP accounts then refreshes the local list.
   // Called automatically when the SIP accounts page loads — no manual button needed.
   async function syncMagnusSipAccounts() {
@@ -260,6 +274,7 @@ export function DialerProvider({ children }: PropsWithChildren) {
       refreshSipAccounts(),
       refreshAudioFiles(),
       refreshActiveCalls(),
+      refreshSubscription(),
     ]);
   }
 
@@ -487,6 +502,8 @@ export function DialerProvider({ children }: PropsWithChildren) {
         login,
         logout,
         refreshBalance,
+        subscription,
+        refreshSubscription,
         syncMagnusSipAccounts,
         refreshCampaigns,
         refreshIvrs,

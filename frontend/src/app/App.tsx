@@ -12,6 +12,7 @@ import { AgentsPage } from "../pages/AgentsPage";
 import { SipAccountsPage } from "../pages/SipAccountsPage";
 import { ReportsPage } from "../pages/ReportsPage";
 import { DashboardPage } from "../pages/DashboardPage";
+import { SubscriptionPage } from "../pages/SubscriptionPage";
 import { BrandLogo } from "../components/BrandLogo";
 
 function ProtectedLayout() {
@@ -83,6 +84,7 @@ export function App() {
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/sip" element={<SipAccountsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/subscription" element={<SubscriptionPage />} />
         </Route>
       </Routes>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { accountHeaders, jsonRequest, requestJson, withAccountQuery } from "../app/api";
 import { useDialer } from "../app/context";
 import type { QueueMonitorResponse } from "../app/types";
@@ -39,6 +39,7 @@ export function RunCampaignPage() {
     clearEventFeed,
     clearDtmfFeed,
     notify,
+    subscription,
   } = useDialer();
   const [selectedListId, setSelectedListId] = useState("");
   const [selectedSipId, setSelectedSipId] = useState("");
@@ -314,11 +315,25 @@ export function RunCampaignPage() {
               </div>
             </div>
 
+            {subscription !== null && !subscription.active ? (
+              <div className="sub-lock-banner">
+                <span className="sub-lock-banner__icon">🔒</span>
+                <div>
+                  No active subscription. <Link to="/subscription">Activate a plan</Link> to run campaigns.
+                </div>
+              </div>
+            ) : null}
             <div className="run-actions">
               {runState !== "running" ? (
-                <button className="btn btn-primary run-actions__primary" type="button" onClick={() => void handleStartOrResume()}>
-                  {runState === "paused" ? "▶ Resume" : "▶ Start"}
-                </button>
+                subscription !== null && !subscription.active ? (
+                  <button className="btn btn-primary run-actions__primary" type="button" disabled>
+                    Subscribe to Run
+                  </button>
+                ) : (
+                  <button className="btn btn-primary run-actions__primary" type="button" onClick={() => void handleStartOrResume()}>
+                    {runState === "paused" ? "▶ Resume" : "▶ Start"}
+                  </button>
+                )
               ) : null}
               {runState === "running" ? (
                 <button className="btn btn-yellow btn-sm" type="button" onClick={() => void handleRunAction("pause")}>

@@ -213,6 +213,21 @@ async function initSchema() {
     )
   `);
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id           TEXT PRIMARY KEY,
+      account_id   TEXT NOT NULL,
+      plan_name    TEXT NOT NULL,
+      plan_days    INTEGER NOT NULL,
+      price_eur    DECIMAL(10,2) NOT NULL,
+      price_inr    DECIMAL(10,4) NOT NULL,
+      status       TEXT DEFAULT 'active',
+      activated_at TIMESTAMPTZ DEFAULT NOW(),
+      expires_at   TIMESTAMPTZ NOT NULL,
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_account_id ON subscriptions(account_id, expires_at DESC)`);
+  await pool.query(`
     INSERT INTO queue_settings (id, strategy, agent_timeout, max_wait, moh_file)
     VALUES (1, 'ringall', 15, 120, '')
     ON CONFLICT (id) DO NOTHING

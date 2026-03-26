@@ -63,6 +63,7 @@ app.use('/api/contact-lists', require('./routes/contact-lists'));
 app.use('/api/agents',        require('./routes/agents'));
 app.use('/api/queue',         require('./routes/queue').router);
 app.use('/api/reports',       require('./routes/reports'));
+app.use('/api/subscription',  require('./routes/subscription'));
 
 // ─── TTS preview endpoint ─────────────────────────────────────────────────────
 // GET /api/tts/preview?text=...&language=en-US&voice=female
