@@ -3,7 +3,6 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { requireAccount } = require('../account');
-const { requireSession, sessions } = require('./magnus');
 
 // EUR to INR conversion rate (matches portal setting)
 const EUR_TO_INR = 88.50;
@@ -40,16 +39,14 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/subscription/activate
-// Body: { plan_id, session_id }
+// Body: { plan_id }
 router.post('/activate', async (req, res) => {
-  const { plan_id, session_id } = req.body || {};
+  const { plan_id } = req.body || {};
   const plan = PLANS.find(p => p.id === plan_id);
   if (!plan) return res.status(400).json({ error: 'Invalid plan' });
 
-  // Get Magnus session to verify balance
-  const session = sessions.get(session_id);
-  if (!session) return res.status(401).json({ error: 'Not authenticated with MagnusBilling' });
-  if (session.username !== req.accountId) return res.status(403).json({ error: 'Session mismatch' });
+  // Use session already validated by requireAccount middleware
+  const session = req.magnusSession;
 
   const price_inr = plan.price_eur * EUR_TO_INR;
   const currentCredit = parseFloat(session.credit || '0');
