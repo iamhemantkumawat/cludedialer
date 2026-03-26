@@ -58,16 +58,26 @@ router.post('/activate', async (req, res) => {
   }
 
   try {
-    // Deduct from Magnus by updating user credit
+    // Deduct from Magnus using refill/save with a negative credit value.
+    // This is the proper Magnus API approach: same endpoint used for top-ups,
+    // just with a negative amount. It creates an audit trail in Magnus refill
+    // history and avoids race conditions from read-modify-write on user credit.
     const { magnusRequest } = require('./magnus_helper');
-    const newCredit = (currentCredit - price_inr).toFixed(4);
 
-    await magnusRequest('user', 'save', {
-      id: session.magnusId,
-      credit: newCredit,
+    const deductResult = await magnusRequest('refill', 'save', {
+      id_user: session.magnusId,
+      payment: '1',
+      id: '0',
+      credit: (-price_inr).toFixed(4),
+      description: `CyberX Dialer: ${plan.name} subscription`,
     });
 
-    // Update session cache
+    if (deductResult.success === false) {
+      return res.status(402).json({ error: deductResult.error || 'Magnus deduction failed' });
+    }
+
+    // Update session cache with new balance
+    const newCredit = (currentCredit - price_inr).toFixed(4);
     session.credit = newCredit;
 
     // Expire any existing active subscription
