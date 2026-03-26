@@ -36,6 +36,7 @@ export function AppShell({
 
         <nav className="sidebar-nav">
           <div className="sidebar-section-label">Workspace</div>
+          <SidebarLink to="/dashboard" icon="dashboard" label="Dashboard" end />
           <SidebarLink to="/campaigns" icon="campaigns" label="Campaigns" end />
           <SidebarLink to="/ivrs" icon="ivr" label="IVR" />
           <SidebarLink to="/run" icon="run" label="Run Campaign" />
@@ -129,7 +130,7 @@ function SidebarLink({ to, icon, label, end, subItem = false }: SidebarLinkProps
   );
 }
 
-type IconName = "campaigns" | "ivr" | "run" | "history" | "contacts" | "agents" | "sip" | "reports";
+type IconName = "dashboard" | "campaigns" | "ivr" | "run" | "history" | "contacts" | "agents" | "sip" | "reports";
 
 function SidebarGlyph({ name }: { name: IconName }) {
   const commonProps = {
@@ -210,6 +211,15 @@ function SidebarGlyph({ name }: { name: IconName }) {
           <path d="M10.5 16V10" />
           <path d="M14 16v-5" />
           <path d="M17.5 16V8" />
+        </svg>
+      );
+    case "dashboard":
+      return (
+        <svg {...commonProps}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
         </svg>
       );
   }

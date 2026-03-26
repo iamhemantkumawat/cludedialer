@@ -11,6 +11,7 @@ import { ContactListsPage } from "../pages/ContactListsPage";
 import { AgentsPage } from "../pages/AgentsPage";
 import { SipAccountsPage } from "../pages/SipAccountsPage";
 import { ReportsPage } from "../pages/ReportsPage";
+import { DashboardPage } from "../pages/DashboardPage";
 import { BrandLogo } from "../components/BrandLogo";
 
 function ProtectedLayout() {
@@ -64,7 +65,7 @@ export function App() {
                 </div>
               </div>
             ) : isAuthenticated ? (
-              <Navigate to="/campaigns" replace />
+              <Navigate to="/dashboard" replace />
             ) : (
               <LoginPage />
             )
@@ -72,7 +73,8 @@ export function App() {
         />
 
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Navigate to="/campaigns" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
           <Route path="/ivrs" element={<IvrsPage />} />
           <Route path="/run" element={<RunCampaignPage />} />

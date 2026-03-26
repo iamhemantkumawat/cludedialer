@@ -5,6 +5,87 @@ const { requireAccount } = require('../account');
 
 router.use(requireAccount);
 
+// GET /api/reports/dashboard
+router.get('/dashboard', async (req, res) => {
+  try {
+    const aid = req.accountId;
+
+    const [
+      contactsRow,
+      activeCampaigns,
+      callsToday,
+      dtmfToday,
+      dailyStats,
+      recentCalls,
+    ] = await Promise.all([
+      db.get('SELECT COUNT(*) as total FROM portal_contacts WHERE account_id = ?', [aid]),
+      db.get("SELECT COUNT(*) as total FROM campaigns WHERE account_id = ? AND status = 'running'", [aid]),
+      db.get(`SELECT COUNT(*) as total FROM call_results
+              WHERE account_id = ? AND called_at >= CURRENT_DATE`, [aid]),
+      db.get(`SELECT COUNT(*) as total FROM call_results
+              WHERE account_id = ? AND called_at >= CURRENT_DATE AND dtmf != '' AND dtmf IS NOT NULL`, [aid]),
+      // Last 7 days grouped by day
+      db.all(`
+        SELECT
+          DATE(called_at) as day,
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'answered' THEN 1 ELSE 0 END) as answered,
+          SUM(CASE WHEN dtmf != '' AND dtmf IS NOT NULL THEN 1 ELSE 0 END) as dtmf
+        FROM call_results
+        WHERE account_id = ?
+          AND called_at >= CURRENT_DATE - INTERVAL '6 days'
+        GROUP BY DATE(called_at)
+        ORDER BY day ASC
+      `, [aid]),
+      // Recent 10 calls with campaign name
+      db.all(`
+        SELECT cr.phone_number, cr.status, cr.dtmf, cr.duration, cr.called_at,
+               c.name as campaign_name
+        FROM call_results cr
+        LEFT JOIN campaigns c ON cr.campaign_id = c.id
+        WHERE cr.account_id = ?
+        ORDER BY cr.called_at DESC
+        LIMIT 10
+      `, [aid]),
+    ]);
+
+    // Fill in missing days with zeros
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const found = dailyStats.find((r) => r.day && String(r.day).slice(0, 10) === key);
+      days.push({
+        day: key,
+        total:    Number(found?.total    || 0),
+        answered: Number(found?.answered || 0),
+        dtmf:     Number(found?.dtmf     || 0),
+      });
+    }
+
+    res.json({
+      stats: {
+        total_contacts:   Number(contactsRow?.total    || 0),
+        active_campaigns: Number(activeCampaigns?.total || 0),
+        calls_today:      Number(callsToday?.total      || 0),
+        dtmf_today:       Number(dtmfToday?.total       || 0),
+      },
+      daily: days,
+      recent: recentCalls.map((r) => ({
+        phone:         r.phone_number,
+        campaign:      r.campaign_name || '—',
+        status:        r.status,
+        dtmf:          r.dtmf && r.dtmf !== '' ? r.dtmf : null,
+        duration:      Number(r.duration) || 0,
+        called_at:     r.called_at,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/reports/summary
 // Returns all campaigns + IVRs with their stats in one query
 router.get('/summary', async (req, res) => {
