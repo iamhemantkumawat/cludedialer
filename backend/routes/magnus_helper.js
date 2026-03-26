@@ -15,7 +15,7 @@ async function magnusRequest(module, action, data = {}) {
   const nonce = `${Math.floor(mt / 1000)}${String(mt % 1000).padStart(3, '0')}${String(Math.floor(Math.random() * 999)).padStart(3, '0')}`;
 
   const payload = { module, action, nonce, ...data };
-  const encoded = qs.stringify(payload);
+  const encoded = new URLSearchParams(payload).toString();
   const sign    = crypto.createHmac('sha512', API_SECRET).update(encoded).digest('hex');
 
   const res = await fetch(`${BASE_URL}/index.php/${module}/${action}`, {

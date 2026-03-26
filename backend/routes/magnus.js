@@ -27,9 +27,12 @@ async function magnusRequest(module, action, data = {}) {
   const frac  = String(mt % 1000).padStart(3, '0') + '000'; // ms padded to 6 digits
   const nonce = `${secs}${frac}`;
 
-  // Put nonce at end of payload to match Python script field order
+  // Put nonce at end of payload to match Python script field order.
+  // Use URLSearchParams (not qs.stringify) so spaces encode as '+' not '%20'.
+  // Magnus re-encodes via PHP http_build_query (uses '+') before HMAC verify,
+  // so '%20' causes signature mismatch → "invalid API access".
   const payload = { module, action, ...data, nonce };
-  const encoded = qs.stringify(payload);
+  const encoded = new URLSearchParams(payload).toString();
   const sign    = crypto.createHmac('sha512', API_SECRET).update(encoded).digest('hex');
 
   const res = await fetch(`${BASE_URL}/index.php/${module}/${action}`, {
